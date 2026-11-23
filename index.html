@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#26364c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="My Timetable">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>My Homeschool Timetable</title>
+<style>
+:root{
+ --app-bg:#f2f3f5;--app-panel:#fff;--app-ink:#20242a;--app-muted:#737b86;--app-border:#e0e3e7;
+ --tt-paper:#fff;--tt-ink:#111;--tt-line:#222;--tt-head:#e8e8e8;--tt-day:#ededed;
+ --tt-lesson:#fff;--tt-break:#ededed;--tt-lunch:#ededed;
+ --tt-line-width:1.5px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--app-bg);color:var(--app-ink);font:14px/1.45 Arial,sans-serif}
+button,input,select{font:inherit}
+button{border:1px solid var(--app-border);background:#fff;color:var(--app-ink);border-radius:9px;padding:9px 12px;cursor:pointer}
+button:hover{background:#f2f4f6;border-color:#aeb5be}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8aadea;outline-offset:2px}
+button.primary{background:#26364c;color:#fff;border-color:#26364c}
+button.primary:hover{background:#354a66}
+button.danger{color:#a22b2b}
+button:disabled{opacity:.4;cursor:not-allowed}
+.app{max-width:1650px;margin:auto;padding:18px clamp(10px,2vw,30px) 36px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.brand{font-weight:700;letter-spacing:.03em;margin-right:auto}
+.save-state{font-size:12px;color:var(--app-muted);padding:0 6px}
+.toolbar button{min-height:39px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:15px;align-items:start}
+.workspace.no-editor{grid-template-columns:minmax(0,1fr)}
+.main{min-width:0}
+.table-shell{position:relative;background:var(--tt-paper);border:1px solid #c7c7c7;overflow:hidden;box-shadow:0 7px 24px #0000000a}
+.table-scroll{overflow-x:hidden}
+table{border-collapse:collapse;width:100%;min-width:0;table-layout:fixed;font-family:Georgia,"Times New Roman",serif}
+th,td{border:var(--tt-line-width) solid var(--tt-line);color:var(--tt-ink);text-align:center;vertical-align:middle;padding:clamp(6px,.8vw,13px) 4px;font-size:clamp(12px,1.15vw,20px);font-weight:400;overflow-wrap:anywhere;word-break:normal}
+thead th{background:var(--tt-head);height:clamp(84px,9vw,112px)}
+thead th:first-child,tbody th{width:13%;font-weight:700}
+tbody th{background:var(--tt-day)}
+.today-heading{box-shadow:inset 0 0 0 3px #f07818!important}
+.today-cell{box-shadow:inset 0 0 0 2px #f0781840}
+.selected-cell{outline:3px solid #6585b1!important;outline-offset:-4px}
+td{height:clamp(58px,6vw,88px);background:var(--tt-lesson)}
+td.break-cell{background:var(--tt-break)}
+td.lunch-cell{background:var(--tt-lunch)}
+.period-title{display:block;font-size:1em;line-height:1.15;margin-bottom:4px;overflow-wrap:anywhere}
+.period-time{display:block;font-size:clamp(9px,.72vw,12px);line-height:1.25;white-space:normal;overflow-wrap:anywhere}
+.time-marker{position:absolute;z-index:5;top:0;bottom:0;width:2px;background:#f07818;pointer-events:none;box-shadow:0 0 0 1px #fff9,0 0 8px #f0781870;display:none}
+.time-marker:before{content:"";position:absolute;top:0;left:-4px;width:10px;height:10px;border-radius:50%;background:#f07818;border:1px solid white}
+.time-marker-label{position:absolute;top:12px;left:8px;white-space:nowrap;background:#f07818;color:#fff;border-radius:5px;padding:4px 7px;font:600 11px Arial,sans-serif;box-shadow:0 2px 7px #0002}
+.live-info{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 2px 0;color:var(--app-muted);font-size:12px;min-height:34px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#e97818;display:inline-block}
+.live-strong{color:var(--app-ink);font-weight:700}
+.tip{color:var(--app-muted);font-size:12px;padding:7px 2px;min-height:26px}
+.side{background:var(--app-panel);border:1px solid var(--app-border);border-radius:12px;padding:14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;box-shadow:0 5px 18px #00000008}
+.side[hidden]{display:none}
+.side h2{font-size:15px;margin:0 0 5px}
+.side .intro{font-size:12px;color:var(--app-muted);margin:0 0 13px}
+.side h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#707782;margin:17px 0 8px}.advanced{border-top:1px solid var(--app-border);padding:11px 0}.advanced summary{cursor:pointer;font-weight:600;font-size:13px;list-style:none}.advanced summary::-webkit-details-marker{display:none}.advanced summary:after{content:"＋";float:right;color:var(--app-muted)}.advanced[open] summary:after{content:"−"}.advanced[open]{padding-bottom:5px}
+.field{margin:9px 0}
+.field label{display:block;font-size:12px;color:#626b76;margin-bottom:5px}
+.field input:not([type=color]),.field select,.preset-select{width:100%;min-width:0;border:1px solid var(--app-border);border-radius:8px;padding:8px;background:#fff;color:#20242a}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.period-list{display:grid;gap:6px}
+.period-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 30px;gap:5px;align-items:center}
+.period-row input{min-width:0;width:100%;border:1px solid var(--app-border);border-radius:7px;padding:7px}
+.period-row input[type=number]{text-align:center}
+.period-row button{padding:5px 0}
+.add-row,.day-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.add-row button,.day-row button{font-size:12px;padding:7px 9px}
+.color-row{display:flex;align-items:center;gap:9px}
+.color-row input[type=color]{width:50px;height:37px;padding:2px;border:1px solid var(--app-border);border-radius:7px;background:white;cursor:pointer}
+.color-row span{font-size:11px;color:var(--app-muted)}
+.palette{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:9px 0}
+.swatch{height:24px;min-width:0;padding:0;border-radius:6px;border:1px solid #0002}
+.swatch.selected{outline:2px solid #26364c;outline-offset:2px}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.preset-grid select{grid-column:1/-1}
+.preset-grid button{font-size:12px;padding:8px 5px}
+.small-note{font-size:11px;color:var(--app-muted);line-height:1.45;margin:8px 0}
+.footer-buttons{display:flex;gap:7px;margin-top:15px}
+.footer-buttons button{flex:1}
+.editing td,.editing tbody th,.editing thead th:not(:first-child){cursor:grab}
+.editing td:hover,.editing tbody th:hover,.editing thead th:not(:first-child):hover{outline:2px dashed #8296b3;outline-offset:-5px}
+.dragging{opacity:.35}.drop-target{outline:3px dashed #6585b1!important;outline-offset:-5px}
+@media(max-width:1050px){.workspace{grid-template-columns:1fr}.side{position:static;max-height:none}.side[hidden]{display:none}}
+@media(max-width:700px){.app{padding:10px 6px 22px}.brand{width:100%}.save-state{margin-right:auto}.toolbar{gap:6px}.toolbar button{padding:8px 9px}th,td{padding:6px 2px;font-size:12px}thead th:first-child,tbody th{width:12%}.period-time{font-size:9px}.period-title{font-size:12px}}
+@media print{body{background:white}.app{padding:0}.toolbar,.side,.tip,.live-info{display:none!important}.workspace{display:block}.table-shell{border:0;box-shadow:none;overflow:visible}.table-scroll{overflow:visible}table{min-width:0}th,td{padding:13px 5px}}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="toolbar">
+  <div class="brand">MY TIMETABLE</div>
+  <span class="save-state" id="saveState">Saved on this device</span>
+  <button id="undoBtn" disabled title="Undo last change">↶ Undo</button>
+  <button id="printBtn">Print</button>
+  <button id="editBtn" class="primary">✎ Edit timetable</button>
+ </header>
+ <div class="workspace no-editor" id="workspace">
+  <main class="main">
+   <div class="table-shell" id="tableShell">
+    <div class="table-scroll"><table id="timetable" aria-label="Weekly homeschool timetable"></table></div>
+    <div class="time-marker" id="timeMarker"><span class="time-marker-label" id="markerLabel"></span></div>
+   </div>
+   <div class="live-info" id="liveInfo"><span class="live-dot"></span><span id="clockText">Checking local time…</span><span id="periodStatus"></span></div>
+   <div class="tip" id="tip">Your timetable saves automatically on this device. Open the editor to customise it.</div>
+  </main>
+  <aside class="side" id="editor" hidden>
+   <h2>Edit timetable</h2>
+   <p class="intro">Select a lesson on the timetable, then change its name below. Changes save automatically.</p>
+
+   <div class="field">
+    <label for="cellText">Selected lesson</label>
+    <input id="cellText" type="text" placeholder="Click a timetable cell first">
+   </div>
+   <div class="day-row">
+    <button id="applyCell" class="primary" disabled>Save name</button>
+    <button id="clearCell" disabled>Clear</button>
+   </div>
+   <div class="field">
+    <label for="startTime">Start time</label>
+    <input id="startTime" type="time" value="09:00">
+   </div>
+
+   <details class="advanced">
+    <summary>Schedule settings</summary>
+    <p class="small-note">Change period names and lengths, add or remove lessons, or edit your days.</p>
+    <div class="field">
+     <label>Periods · name, minutes, remove</label>
+     <div class="period-list" id="periodList"></div>
+     <div class="add-row"><button id="addLesson">+ Lesson</button><button id="addBreak">+ Break</button><button id="addLunch">+ Lunch</button></div>
+    </div>
+    <div class="field">
+     <label>Days</label>
+     <div class="day-row"><button id="addDay">+ Add day</button><button id="removeDay" class="danger">Remove last</button></div>
+    </div>
+   </details>
+
+   <details class="advanced">
+    <summary>Colours</summary>
+    <div class="field">
+     <label>Choose a colour</label>
+     <div class="color-row"><input type="color" id="colorPicker" value="#ffffff" aria-label="Choose a colour"><span>Pick any colour.</span></div>
+     <div class="palette" id="palette"></div>
+    </div>
+    <div class="field"><label for="colorTarget">Apply colour to</label><select id="colorTarget">
+     <option value="lesson">Lesson cells</option><option value="break">Break cells</option><option value="lunch">Lunch cells</option><option value="header">Period headings</option><option value="day">Day headings</option><option value="all">All timetable cells</option>
+    </select></div>
+   </details>
+
+   <details class="advanced">
+    <summary>Saved timetables & backup</summary>
+    <div class="preset-grid">
+     <select class="preset-select" id="presetSelect"><option value="">Choose a preset</option></select>
+     <button id="loadPreset">Load</button><button id="savePreset" class="primary">Save as new</button>
+     <button id="renamePreset">Rename</button><button id="deletePreset" class="danger">Delete</button>
+    </div>
+    <div class="day-row" style="margin-top:9px"><button id="exportBtn">Export backup</button><button id="importBtn">Import backup</button><input id="importFile" type="file" accept="application/json,.json" hidden></div>
+    <p class="small-note">Your timetable and presets are saved in this browser on this PC.</p>
+   </details>
+   <div class="footer-buttons"><button id="doneBtn" class="primary">Done</button></div>
+  </aside>
+ </div>
+</div>
+<script>
+const INITIAL={
+ start:"09:00",
+ days:["Monday","Tuesday","Wednesday","Thursday","Friday"],
+ periods:[
+  {id:"lesson1",name:"Lesson 1",type:"lesson",duration:60},
+  {id:"break1",name:"Break",type:"break",duration:30},
+  {id:"lesson2",name:"Lesson 2",type:"lesson",duration:60},
+  {id:"lunch1",name:"Lunch",type:"lunch",duration:60},
+  {id:"lesson3",name:"Lesson 3",type:"lesson",duration:60}
+ ],
+ cells:[
+  ["English","Break","Chemistry","Lunch","Maths"],
+  ["Biology","Break","Maths","Lunch","History"],
+  ["Chemistry","Break","Biology","Lunch","English"],
+  ["Geography","Break","History","Lunch","Maths"],
+  ["Physics","Break","English","Lunch","Biology"]
+ ],
+ colors:{lesson:"#ffffff",break:"#ededed",lunch:"#ededed",header:"#e8e8e8",day:"#ededed"},
+ 
+};
+const CURRENT_KEY="homeTimetable_current_v3",PRESET_KEY="homeTimetable_presets_v3";
+let data=loadData(),editing=false,drag=null,undoStack=[];
+const $=id=>document.getElementById(id);
+function copy(x){return JSON.parse(JSON.stringify(x))}
+function loadData(){try{const v=JSON.parse(localStorage.getItem(CURRENT_KEY));if(v&&Array.isArray(v.days)&&Array.isArray(v.periods)&&Array.isArray(v.cells)){v.colors={...INITIAL.colors,...v.colors};return v}}catch(e){}return copy(INITIAL)}
+function snapshot(){undoStack.push(copy(data));if(undoStack.length>35)undoStack.shift();$("undoBtn").disabled=false}
+function changed(){try{localStorage.setItem(CURRENT_KEY,JSON.stringify(data));$("saveState").textContent="Saved on this device"}catch(e){$("saveState").textContent="Save unavailable"}}
+function commit(){changed();render();updateLive()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function timeMinutes(s){let [h,m]=(s||"09:00").split(":").map(Number);return h*60+m}
+function clockMins(d){return d.getHours()*60+d.getMinutes()+d.getSeconds()/60}
+function formatClock(m){m=((Math.floor(m)%1440)+1440)%1440;let h=Math.floor(m/60),mi=m%60;return `${String(h).padStart(2,"0")}:${String(mi).padStart(2,"0")}`}
+function formatPretty(m){let [h,mi]=formatClock(m).split(":").map(Number);return `${h%12||12}:${String(mi).padStart(2,"0")} ${h>=12?"PM":"AM"}`}
+function totalDuration(){return data.periods.reduce((s,p)=>s+Math.max(1,Number(p.duration)||1),0)}
+function normalize(){data.cells=data.days.map((_,r)=>data.periods.map((p,c)=>data.cells[r]?.[c]??(p.type==="break"?"Break":p.type==="lunch"?"Lunch":"")))}
+function setTableColors(){
+ const c=data.colors||INITIAL.colors,root=document.documentElement;
+ root.style.setProperty("--tt-lesson",c.lesson);root.style.setProperty("--tt-break",c.break);root.style.setProperty("--tt-lunch",c.lunch);
+ root.style.setProperty("--tt-head",c.header);root.style.setProperty("--tt-day",c.day);
+
+}
+function render(){
+ normalize();setTableColors();
+ let elapsed=timeMinutes(data.start||"09:00"),html="<thead><tr><th>Day</th>";
+ data.periods.forEach((p,i)=>{let end=elapsed+Number(p.duration||0);html+=`<th data-period="${esc(p.id)}" draggable="${editing}"><span class="period-title">${esc(p.name)}</span><span class="period-time">(${formatPretty(elapsed)} – ${formatPretty(end)})</span></th>`;elapsed=end});
+ html+="</tr></thead><tbody>";
+ data.days.forEach((day,r)=>{html+=`<tr><th data-day="${r}" ${editing?'contenteditable="true"':''}>${esc(day)}</th>`;
+ data.periods.forEach((p,c)=>{let cl=p.type==="break"?"break-cell":p.type==="lunch"?"lunch-cell":"";html+=`<td class="${cl}" data-row="${r}" data-col="${c}" draggable="${editing}">${esc(data.cells[r][c])}</td>`});html+="</tr>"});
+ $("timetable").innerHTML=html;$("timetable").classList.toggle("editing",editing);
+ if(editing)attachTableEvents();
+}
+function attachTableEvents(){
+ const table=$("timetable");
+ table.querySelectorAll("td").forEach(cell=>{
+  cell.addEventListener("click",()=>{if(editing)selectCell(cell)});
+  cell.addEventListener("dragstart",e=>{drag={kind:"cell",r:+cell.dataset.row,c:+cell.dataset.col};e.dataTransfer.effectAllowed="move";cell.classList.add("dragging")});
+  cell.addEventListener("dragend",()=>{cell.classList.remove("dragging");clearTargets()});
+  cell.addEventListener("dragover",e=>{if(drag?.kind==="cell"){e.preventDefault();cell.classList.add("drop-target")}});
+  cell.addEventListener("dragleave",()=>cell.classList.remove("drop-target"));
+  cell.addEventListener("drop",e=>{e.preventDefault();if(drag?.kind!=="cell")return;let r=+cell.dataset.row,c=+cell.dataset.col; snapshot();[data.cells[r][c],data.cells[drag.r][drag.c]]=[data.cells[drag.r][drag.c],data.cells[r][c]];drag=null;commit()});
+ });
+ table.querySelectorAll("thead th[data-period]").forEach(th=>{
+  th.addEventListener("dragstart",e=>{drag={kind:"period",id:th.dataset.period};e.dataTransfer.effectAllowed="move";th.classList.add("dragging")});
+  th.addEventListener("dragend",()=>{th.classList.remove("dragging");clearTargets()});
+  th.addEventListener("dragover",e=>{if(drag?.kind==="period"){e.preventDefault();th.classList.add("drop-target")}});
+  th.addEventListener("dragleave",()=>th.classList.remove("drop-target"));
+  th.addEventListener("drop",e=>{e.preventDefault();if(drag?.kind!=="period")return;let a=data.periods.findIndex(p=>p.id===drag.id),b=data.periods.findIndex(p=>p.id===th.dataset.period);if(a<0||b<0)return;snapshot();let [p]=data.periods.splice(a,1);data.periods.splice(b,0,p);data.cells.forEach(row=>{let [v]=row.splice(a,1);row.splice(b,0,v)});drag=null;commit();renderPeriodList()});
+ });
+ table.querySelectorAll("tbody th[data-day]").forEach(th=>th.addEventListener("blur",()=>{let r=+th.dataset.day,v=th.textContent.trim();if(v&&v!==data.days[r]){snapshot();data.days[r]=v;commit()}}));
+}
+let selectedCell=null;
+function selectCell(cell){
+ selectedCell={r:+cell.dataset.row,c:+cell.dataset.col};
+ $("cellText").value=data.cells[selectedCell.r][selectedCell.c];
+ $("applyCell").disabled=false;$("clearCell").disabled=false;
+ document.querySelectorAll("td.selected-cell").forEach(x=>x.classList.remove("selected-cell"));
+ cell.classList.add("selected-cell");$("cellText").focus();
+}
+function clearTargets(){document.querySelectorAll(".drop-target").forEach(x=>x.classList.remove("drop-target"))}
+function renderPeriodList(){
+ $("periodList").innerHTML=data.periods.map((p,i)=>`<div class="period-row"><input aria-label="Period name" data-period-name="${i}" value="${esc(p.name)}"><input aria-label="Duration minutes" data-period-duration="${i}" type="number" min="1" max="720" step="5" value="${Number(p.duration)||60}"><button class="danger" data-period-remove="${i}" title="Remove period">×</button></div>`).join("");
+ $("periodList").querySelectorAll("[data-period-name]").forEach(el=>el.addEventListener("change",()=>{let i=+el.dataset.periodName;snapshot();data.periods[i].name=el.value.trim()||"Period";commit()}));
+ $("periodList").querySelectorAll("[data-period-duration]").forEach(el=>el.addEventListener("change",()=>{let i=+el.dataset.periodDuration;snapshot();data.periods[i].duration=Math.max(1,Math.min(720,Number(el.value)||60));commit()}));
+ $("periodList").querySelectorAll("[data-period-remove]").forEach(el=>el.addEventListener("click",()=>{let i=+el.dataset.periodRemove;if(!confirm(`Remove ${data.periods[i].name} from the timetable?`))return;snapshot();data.periods.splice(i,1);data.cells.forEach(row=>row.splice(i,1));commit();renderPeriodList()}));
+}
+function addPeriod(type){
+ let n=type==="break"?"Break":type==="lunch"?"Lunch":`Lesson ${data.periods.filter(p=>p.type==="lesson").length+1}`;
+ snapshot();data.periods.push({id:"p"+Date.now()+Math.random().toString(36).slice(2,5),name:n,type,duration:type==="break"?15:60});
+ data.cells.forEach(row=>row.push(type==="break"?"Break":type==="lunch"?"Lunch":""));commit();renderPeriodList()
+}
+function showEditor(on){editing=on;$("editor").hidden=!on;$("workspace").classList.toggle("no-editor",!on);$("editBtn").textContent=on?"✕ Close editor":"✎ Edit timetable";$("tip").textContent=on?"Click a cell to edit it. Drag cells to swap them; drag period headings to reorder columns.":"Your timetable saves automatically on this device. Open the editor to customise it.";if(on){syncControls();refreshPresets()}render()}
+function syncControls(){$("startTime").value=data.start||"09:00";$("colorPicker").value=data.colors.lesson}
+function updateLive(){
+ const table=$("timetable"),now=new Date(),minute=clockMins(now),start=timeMinutes(data.start||"09:00"),total=totalDuration(),elapsed=minute-start;
+ $("clockText").textContent=`Local time ${now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`;
+ table.querySelectorAll(".today-heading,.today-cell").forEach(el=>el.classList.remove("today-heading","today-cell"));
+ const weekday=now.toLocaleDateString("en-US",{weekday:"long"}),todayIndex=data.days.findIndex(d=>d.toLowerCase()===weekday.toLowerCase());
+ if(todayIndex>=0){const row=table.querySelectorAll("tbody tr")[todayIndex];if(row){row.querySelector("th")?.classList.add("today-heading");row.querySelectorAll("td").forEach(td=>td.classList.add("today-cell"))}}
+ const marker=$("timeMarker"),status=$("periodStatus"),shell=$("tableShell");
+ if(elapsed<0||elapsed>=total||!data.periods.length){marker.style.display="none";status.textContent=elapsed<0?"School day has not started yet": "Timetable has finished for today";return}
+ let cursor=0,index=0;
+ for(;index<data.periods.length;index++){let dur=Math.max(1,Number(data.periods[index].duration)||1);if(elapsed<cursor+dur)break;cursor+=dur}
+ if(index>=data.periods.length){marker.style.display="none";status.textContent="Timetable has finished for today";return}
+ let p=data.periods[index],duration=Math.max(1,Number(p.duration)||1),within=elapsed-cursor,fraction=Math.max(0,Math.min(1,within/duration));
+ let tableRect=table.getBoundingClientRect(),shellRect=shell.getBoundingClientRect(),first=table.querySelector("thead th"),periodHeaders=table.querySelectorAll("thead th[data-period]");
+ if(!first||!periodHeaders[index]){marker.style.display="none";return}
+ let firstRect=first.getBoundingClientRect(),periodRect=periodHeaders[index].getBoundingClientRect();
+ let x=periodRect.left+periodRect.width*fraction-shellRect.left;
+ marker.style.left=`${x}px`;marker.style.display="block";
+ let secondsLeft=Math.max(0,Math.ceil((duration-within)*60));let remaining=Math.ceil(secondsLeft/60);
+ $("markerLabel").textContent=`${Math.floor(secondsLeft/60)}:${String(secondsLeft%60).padStart(2,"0")} left`;
+ let currentCell=table.querySelector(`tbody tr td[data-col="${index}"]`),subject=currentCell?currentCell.textContent.trim():p.name;
+ status.innerHTML=`<span class="live-strong">${esc(subject||p.name)}</span> · ${Math.floor(secondsLeft/60)}m ${String(secondsLeft%60).padStart(2,"0")}s left · Ends ${formatPretty(start+cursor+duration)}`;
+}
+function getPresets(){try{return JSON.parse(localStorage.getItem(PRESET_KEY)||"[]")}catch(e){return []}}
+function refreshPresets(keep=""){$("presetSelect").innerHTML='<option value="">Choose a saved preset</option>'+getPresets().map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join("");$("presetSelect").value=keep}
+function setPresets(v){localStorage.setItem(PRESET_KEY,JSON.stringify(v));refreshPresets()}
+const swatches=["#ffffff","#f4cccc","#fce5cd","#fff2cc","#d9ead3","#d0e0e3","#cfe2f3","#d9d2e9","#ead1dc","#eeeeee","#d9d9d9","#b6d7a8","#a2c4c9","#9fc5e8","#b4a7d6","#d5a6bd","#f4a261","#e9c46a","#8ab17d","#55a6a6","#6d9eeb","#8e7cc3","#c27ba0","#e06666","#dbeafe","#d1fae5","#fef3c7","#fae8ff","#1f2937","#334155","#164e63","#365314"];
+function renderPalette(){let selected=$("colorPicker").value.toLowerCase();$("palette").innerHTML=swatches.map(c=>`<button class="swatch ${c===selected?"selected":""}" style="background:${c}" data-color="${c}" title="${c}" aria-label="Choose ${c}"></button>`).join("");$("palette").querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{$("colorPicker").value=b.dataset.color;applyColor()}))}
+function applyColor(){let color=$("colorPicker").value,target=$("colorTarget").value;snapshot();if(target==="all"){data.colors={lesson:color,break:color,lunch:color,header:color,day:color}}else data.colors[target]=color;changed();setTableColors();renderPalette()}
+$("editBtn").addEventListener("click",()=>showEditor($("editor").hidden));
+$("doneBtn").addEventListener("click",()=>showEditor(false));
+$("printBtn").addEventListener("click",()=>window.print());
+$("undoBtn").addEventListener("click",()=>{if(!undoStack.length)return;data=undoStack.pop();$("undoBtn").disabled=!undoStack.length;changed();syncControls();render();renderPeriodList();renderPalette()});
+$("startTime").addEventListener("change",e=>{snapshot();data.start=e.target.value;commit()});
+$("addLesson").addEventListener("click",()=>addPeriod("lesson"));
+$("addBreak").addEventListener("click",()=>addPeriod("break"));
+$("addLunch").addEventListener("click",()=>addPeriod("lunch"));
+$("addDay").addEventListener("click",()=>{let n=prompt("Name the new day:");if(!n?.trim())return;snapshot();data.days.push(n.trim());data.cells.push(data.periods.map(p=>p.type==="break"?"Break":p.type==="lunch"?"Lunch":""));commit()});
+$("removeDay").addEventListener("click",()=>{if(data.days.length<=1){alert("Keep at least one day.");return}snapshot();data.days.pop();data.cells.pop();commit()});
+$("colorPicker").addEventListener("input",()=>{setTableColors();$("colorPicker").dataset.preview="1"});
+$("colorPicker").addEventListener("change",applyColor);
+$("colorTarget").addEventListener("change",()=>{});
+
+$("applyCell").addEventListener("click",()=>{if(!selectedCell)return;snapshot();data.cells[selectedCell.r][selectedCell.c]=$("cellText").value;commit();render()});
+$("clearCell").addEventListener("click",()=>{if(!selectedCell)return;snapshot();data.cells[selectedCell.r][selectedCell.c]="";$("cellText").value="";commit()});
+$("cellText").addEventListener("keydown",e=>{if(e.key==="Enter")$("applyCell").click()});
+$("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify({timetable:data,presets:getPresets()},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="timetable-backup.json";a.click();URL.revokeObjectURL(url)});
+$("importBtn").addEventListener("click",()=>$("importFile").click());
+$("importFile").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{const obj=JSON.parse(await file.text());const incoming=obj.timetable||obj;if(!Array.isArray(incoming.days)||!Array.isArray(incoming.periods)||!Array.isArray(incoming.cells))throw Error("Invalid timetable file");if(!confirm("Import this backup and replace the current timetable?"))return;snapshot();data=copy(incoming);data.colors={...INITIAL.colors,...data.colors};normalize();if(Array.isArray(obj.presets))localStorage.setItem(PRESET_KEY,JSON.stringify(obj.presets));changed();syncControls();render();renderPeriodList();renderPalette();refreshPresets()}catch(err){alert("That backup file could not be read.")}e.target.value=""});
+$("savePreset").addEventListener("click",()=>{let name=prompt("Name this timetable preset:");if(!name?.trim())return;let presets=getPresets();presets.push({name:name.trim(),data:copy(data)});setPresets(presets,String(presets.length-1))});
+$("loadPreset").addEventListener("click",()=>{let s=$("presetSelect").value,p=getPresets()[Number(s)];if(s===""||!p)return alert("Choose a preset first.");if(!confirm(`Load "${p.name}"? This replaces the current timetable.`))return;snapshot();data=copy(p.data);normalize();changed();syncControls();render();renderPeriodList();renderPalette()});
+$("renamePreset").addEventListener("click",()=>{let s=$("presetSelect").value,ps=getPresets(),i=Number(s);if(s===""||!ps[i])return alert("Choose a preset first.");let n=prompt("New preset name:",ps[i].name);if(!n?.trim())return;ps[i].name=n.trim();setPresets(ps,s)});
+$("deletePreset").addEventListener("click",()=>{let s=$("presetSelect").value,ps=getPresets(),i=Number(s);if(s===""||!ps[i])return alert("Choose a preset first.");if(!confirm(`Delete "${ps[i].name}"?`))return;ps.splice(i,1);setPresets(ps)});
+normalize();delete data.font;delete data.fontSize;render();renderPalette();setInterval(updateLive,250);updateLive();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
